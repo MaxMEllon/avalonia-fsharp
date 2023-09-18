@@ -8,14 +8,27 @@ open Avalonia.Controls
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.Layout
+open FsHttp
 
 module Main =
 
     let view () =
         Component(fun ctx ->
             let state = ctx.useState 0
+            let ipState = ctx.useState ""
             ctx.useEffect(
-                handler = (fun _ -> state.Set(0)),
+                handler = (fun _ -> 
+                    let _ =
+                        http {
+                                GET "https://ifconfig.me/all.json"
+                                CacheControl "no-cache"
+                        }
+                        |> Request.send
+                        |> Response.toJson
+                        |> fun json -> json?forwarded.GetString()
+                        |> fun ip -> ipState.Set(ip)
+                    null
+                ),
                 triggers = [ EffectTrigger.AfterInit ]
             )
 
@@ -34,6 +47,13 @@ module Main =
                         Button.content "+"
                         Button.horizontalAlignment HorizontalAlignment.Stretch
                         Button.horizontalContentAlignment HorizontalAlignment.Center
+                    ]
+                    TextBlock.create [
+                        TextBlock.dock Dock.Top
+                        TextBlock.fontSize 48.0
+                        TextBlock.verticalAlignment VerticalAlignment.Center
+                        TextBlock.horizontalAlignment HorizontalAlignment.Center
+                        TextBlock.text (string ipState.Current)
                     ]
                     TextBlock.create [
                         TextBlock.dock Dock.Top
